@@ -36,6 +36,8 @@ namespace SmartMarketplace.Pages
         public string ErrorMessage { get; set; }
         public bool IsGenerationMode { get; set; }
         public string ExpertisesInputValue { get; set; }
+        public string SimpleInput { get; set; }
+        public bool ShowGeneratedMission { get; set; }
 
         public void OnGet()
         {
@@ -52,11 +54,13 @@ namespace SmartMarketplace.Pages
             // Initialize a new Mission object
             Mission = new Mission
             {
-                StartImmediately = true // Default value
+                StartImmediately = true, // Default value
+                Country = "Maroc" // Default country
             };
             
             // Default mode is simple input
             IsGenerationMode = false;
+            ShowGeneratedMission = false;
         }
 
         public async Task<IActionResult> OnPostGenerateAsync(string simpleInput)
@@ -69,61 +73,58 @@ namespace SmartMarketplace.Pages
 
             try
             {
+                // Store the original input
+                SimpleInput = simpleInput;
+                
                 // Initialize SelectLists for dropdown menus
                 InitializeSelectLists();
                 
                 // Set generation mode
                 IsGenerationMode = true;
+                ShowGeneratedMission = true;
                 
-                // Parse simple input for budget
-                decimal budget = ExtractBudget(simpleInput);
-                
-                // Extract technologies
-                List<string> technologies = ExtractTechnologies(simpleInput);
-                string techString = string.Join(", ", technologies);
-                
-                // Store for the form
-                ExpertisesInputValue = techString;
+                // Extract information from the simple input
+                var extractedInfo = ExtractInformationFromInput(simpleInput);
                 
                 // Build the prompt for Grok API
                 string prompt = $@"
                 Génère une mission complète de développement freelance basée sur cette description simple: '{simpleInput}'.
                 
                 Utilise ces informations pour créer:
-                1. Un titre professionnel et accrocheur (max 80 caractères)
+                1. Un titre professionnel et accrocheur (max 80 caractères) qui reflète exactement le rôle mentionné dans l'entrée
                 2. Une description technique détaillée qui inclut:
                    - Le contexte du projet
                    - Les responsabilités du développeur
                    - Les livrables attendus
                    - La stack technique complète
                 3. Informations logistiques:
-                   - Pays: Maroc
-                   - Ville: Casablanca (par défaut, sauf si une autre ville est mentionnée)
-                   - Mode de travail: REMOTE (par défaut, sauf si ONSITE ou HYBRID est mentionné)
-                   - Durée: 3 mois (par défaut, ou estime une durée réaliste)
+                   - Pays: {extractedInfo.Country}
+                   - Ville: {extractedInfo.City}
+                   - Mode de travail: {extractedInfo.WorkMode}
+                   - Durée: {extractedInfo.Duration} {extractedInfo.DurationType}
                 4. Informations contractuelles:
-                   - TJM: {budget} MAD (si un montant est mentionné)
-                   - Type de contrat: REGIE (par défaut)
-                   - Expérience requise: 3-7 ans (par défaut, ou estime selon la complexité)
-                   - Domaine: Développement web (par défaut, ou précise selon le contexte)
-                   - Poste: Développeur {techString} (adapte selon les technologies)
+                   - TJM: {extractedInfo.Salary} {extractedInfo.Currency}
+                   - Type de contrat: {extractedInfo.ContractType}
+                   - Expérience requise: {extractedInfo.Experience}
+                   - Domaine: {extractedInfo.Domain}
+                   - Poste: {extractedInfo.Position}
                 
                 Réponds uniquement avec un JSON structuré comme suit:
                 {{
                   ""title"": ""Titre de la mission"",
                   ""description"": ""Description détaillée"",
-                  ""country"": ""Maroc"",
-                  ""city"": ""Ville"",
-                  ""workMode"": ""REMOTE/ONSITE/HYBRID"",
-                  ""duration"": nombre,
-                  ""durationType"": ""MONTH/YEAR"",
-                  ""startImmediately"": true/false,
-                  ""experienceYear"": ""0-3/3-7/7-12/12+"",
-                  ""contractType"": ""FORFAIT/REGIE"",
-                  ""estimatedDailyRate"": nombre,
-                  ""domain"": ""Domaine"",
-                  ""position"": ""Poste"",
-                  ""requiredExpertises"": [""tech1"", ""tech2"", ...]
+                  ""country"": ""{extractedInfo.Country}"",
+                  ""city"": ""{extractedInfo.City}"",
+                  ""workMode"": ""{extractedInfo.WorkMode}"",
+                  ""duration"": {extractedInfo.Duration},
+                  ""durationType"": ""{extractedInfo.DurationType}"",
+                  ""startImmediately"": true,
+                  ""experienceYear"": ""{extractedInfo.Experience}"",
+                  ""contractType"": ""{extractedInfo.ContractType}"",
+                  ""estimatedDailyRate"": {extractedInfo.Salary},
+                  ""domain"": ""{extractedInfo.Domain}"",
+                  ""position"": ""{extractedInfo.Position}"",
+                  ""requiredExpertises"": {JsonSerializer.Serialize(extractedInfo.Expertises)}
                 }}";
                 
                 // Call Grok API
@@ -149,19 +150,24 @@ namespace SmartMarketplace.Pages
                             Mission.StartDate = null;
                         }
                         
+                        // Set the expertises input value for the form
+                        ExpertisesInputValue = string.Join(", ", Mission.RequiredExpertises ?? new List<string>());
+                        
                         return Page();
                     }
                     catch (JsonException ex)
                     {
                         // If JSON parsing fails, try to generate a mission from the text response
-                        Mission = GenerateFallbackMission(simpleInput, grokResponse, budget, technologies);
+                        Mission = GenerateFallbackMission(simpleInput, grokResponse, extractedInfo);
+                        ExpertisesInputValue = string.Join(", ", Mission.RequiredExpertises ?? new List<string>());
                         return Page();
                     }
                 }
                 else
                 {
                     // If API call fails, generate a basic mission
-                    Mission = GenerateFallbackMission(simpleInput, "", budget, technologies);
+                    Mission = GenerateFallbackMission(simpleInput, "", extractedInfo);
+                    ExpertisesInputValue = string.Join(", ", Mission.RequiredExpertises ?? new List<string>());
                     return Page();
                 }
             }
@@ -190,6 +196,7 @@ namespace SmartMarketplace.Pages
                 // Re-initialize SelectLists if validation fails
                 InitializeSelectLists();
                 IsGenerationMode = true;
+                ShowGeneratedMission = true;
                 ExpertisesInputValue = expertisesInput;
                 return Page();
             }
@@ -201,6 +208,7 @@ namespace SmartMarketplace.Pages
             };
             MissionJson = JsonSerializer.Serialize(Mission, options);
             SubmissionSuccessful = true;
+            ShowGeneratedMission = true;
 
             // TODO: Save the Mission to your database
             // For example: await _context.Missions.AddAsync(Mission);
@@ -217,28 +225,197 @@ namespace SmartMarketplace.Pages
             ContractTypeOptions = new SelectList(new[] { "FORFAIT", "REGIE" });
         }
         
-        private decimal ExtractBudget(string input)
+        private class ExtractedInformation
         {
-            // Look for patterns like "4000 dh", "4000dh", "4000 MAD", "4,000 MAD", etc.
-            var regex = new Regex(@"(\d+[,\s]?\d*)\s*(?:dh|MAD|dirhams)", RegexOptions.IgnoreCase);
-            var match = regex.Match(input);
+            public string Country { get; set; } = "Maroc";
+            public string City { get; set; } = "Casablanca";
+            public string WorkMode { get; set; } = "REMOTE";
+            public int Duration { get; set; } = 3;
+            public string DurationType { get; set; } = "MONTH";
+            public decimal Salary { get; set; } = 4000;
+            public string Currency { get; set; } = "DH";
+            public string ContractType { get; set; } = "REGIE";
+            public string Experience { get; set; } = "3-7";
+            public string Domain { get; set; } = "Développement web";
+            public string Position { get; set; } = "Développeur";
+            public List<string> Expertises { get; set; } = new List<string>();
+        }
+        
+        private ExtractedInformation ExtractInformationFromInput(string input)
+        {
+            var info = new ExtractedInformation();
+            
+            // Extract city
+            var moroccanCities = new[] { 
+                "Casablanca", "Rabat", "Marrakech", "Fès", "Tanger", "Agadir", "Meknès", "Oujda", 
+                "Kénitra", "Tétouan", "Safi", "Mohammedia", "El Jadida", "Béni Mellal", "Nador", 
+                "Khémisset", "Taza", "Settat", "Berrechid", "Khénifra", "Larache", "Guelmim", 
+                "Khouribga", "Ouarzazate", "Youssoufia", "Dakhla", "Laâyoune", "Essaouira", "Ifrane"
+            };
+            
+            foreach (var city in moroccanCities)
+            {
+                if (input.IndexOf(city, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    info.City = city;
+                    break;
+                }
+            }
+            
+            // Extract country (if explicitly mentioned)
+            var countries = new[] { "Maroc", "France", "Belgique", "Suisse", "Canada", "Tunisie", "Algérie" };
+            foreach (var country in countries)
+            {
+                if (input.IndexOf(country, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    info.Country = country;
+                    break;
+                }
+            }
+            
+            // Extract work mode
+            if (input.IndexOf("remote", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                input.IndexOf("télétravail", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                input.IndexOf("à distance", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.WorkMode = "REMOTE";
+            }
+            else if (input.IndexOf("onsite", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                     input.IndexOf("sur site", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     input.IndexOf("présentiel", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.WorkMode = "ONSITE";
+            }
+            else if (input.IndexOf("hybrid", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                     input.IndexOf("hybride", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.WorkMode = "HYBRID";
+            }
+            
+            // Extract salary and currency
+            var salaryRegex = new Regex(@"(\d+[,\s]?\d*)\s*(?:dh|MAD|dirhams|euros|EUR|€|\$|USD|dollars)", RegexOptions.IgnoreCase);
+            var match = salaryRegex.Match(input);
             
             if (match.Success)
             {
                 string budgetStr = match.Groups[1].Value.Replace(" ", "").Replace(",", "");
                 if (decimal.TryParse(budgetStr, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal budget))
                 {
-                    return budget;
+                    info.Salary = budget;
+                    
+                    // Extract currency
+                    string fullMatch = match.Value.ToLowerInvariant();
+                    if (fullMatch.Contains("dh") || fullMatch.Contains("mad") || fullMatch.Contains("dirhams"))
+                    {
+                        info.Currency = "DH";
+                    }
+                    else if (fullMatch.Contains("euros") || fullMatch.Contains("eur") || fullMatch.Contains("€"))
+                    {
+                        info.Currency = "EUR";
+                    }
+                    else if (fullMatch.Contains("$") || fullMatch.Contains("usd") || fullMatch.Contains("dollars"))
+                    {
+                        info.Currency = "USD";
+                    }
                 }
             }
             
-            // Default budget if not found
-            return 4000m;
-        }
-        
-        private List<string> ExtractTechnologies(string input)
-        {
-            // Common technologies to look for
+            // Extract contract type
+            if (input.IndexOf("forfait", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.ContractType = "FORFAIT";
+            }
+            else if (input.IndexOf("régie", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                     input.IndexOf("regie", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.ContractType = "REGIE";
+            }
+            
+            // Extract duration
+            var durationRegex = new Regex(@"(\d+)\s*(?:mois|ans|années|semaines|jours)", RegexOptions.IgnoreCase);
+            match = durationRegex.Match(input);
+            
+            if (match.Success)
+            {
+                if (int.TryParse(match.Groups[1].Value, out int duration))
+                {
+                    info.Duration = duration;
+                    
+                    string unit = match.Value.ToLowerInvariant();
+                    if (unit.Contains("mois"))
+                    {
+                        info.DurationType = "MONTH";
+                    }
+                    else if (unit.Contains("ans") || unit.Contains("années"))
+                    {
+                        info.DurationType = "YEAR";
+                    }
+                    else if (unit.Contains("semaines") || unit.Contains("jours"))
+                    {
+                        // Convert weeks to months (approximately)
+                        info.DurationType = "MONTH";
+                        if (unit.Contains("semaines"))
+                        {
+                            info.Duration = Math.Max(1, duration / 4); // Rough approximation: 4 weeks = 1 month
+                        }
+                        else // days
+                        {
+                            info.Duration = Math.Max(1, duration / 30); // Rough approximation: 30 days = 1 month
+                        }
+                    }
+                }
+            }
+            
+            // Extract experience level
+            if (input.IndexOf("junior", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                input.IndexOf("débutant", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.Experience = "0-3";
+            }
+            else if (input.IndexOf("senior", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                     input.IndexOf("expérimenté", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.Experience = "7-12";
+            }
+            else if (input.IndexOf("expert", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                     input.IndexOf("lead", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     input.IndexOf("architecte", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                info.Experience = "12+";
+            }
+            
+            // Extract position and domain
+            var techRoles = new Dictionary<string, List<string>> {
+                { "Frontend", new List<string> { "react", "angular", "vue", "javascript", "typescript", "html", "css", "frontend", "front-end", "front end" } },
+                { "Backend", new List<string> { "node", "express", "php", "laravel", "symfony", "python", "django", "flask", "java", "spring", "c#", ".net", "asp.net", "ruby", "rails", "backend", "back-end", "back end" } },
+                { "Fullstack", new List<string> { "fullstack", "full-stack", "full stack", "mern", "mean" } },
+                { "Mobile", new List<string> { "react native", "flutter", "swift", "kotlin", "android", "ios", "mobile" } },
+                { "DevOps", new List<string> { "devops", "aws", "azure", "gcp", "docker", "kubernetes", "jenkins", "ci/cd", "terraform", "ansible" } },
+                { "Data", new List<string> { "data", "sql", "mysql", "postgresql", "mongodb", "nosql", "big data", "hadoop", "spark", "etl", "bi", "business intelligence", "data science", "machine learning", "ml", "ai", "intelligence artificielle" } },
+                { "Sécurité", new List<string> { "sécurité", "security", "pentest", "cybersécurité", "cybersecurity" } },
+                { "CMS", new List<string> { "wordpress", "drupal", "joomla", "magento", "shopify", "prestashop", "cms" } }
+            };
+            
+            foreach (var role in techRoles)
+            {
+                foreach (var keyword in role.Value)
+                {
+                    if (input.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        info.Domain = $"Développement {role.Key}";
+                        info.Position = $"Développeur {role.Key}";
+                        info.Expertises.Add(keyword);
+                        break;
+                    }
+                }
+                
+                if (info.Expertises.Count > 0)
+                {
+                    break;
+                }
+            }
+            
+            // Extract specific technologies for expertises
             var commonTechs = new List<string>
             {
                 "React", "Angular", "Vue", "JavaScript", "TypeScript", "Node.js", "Express", 
@@ -249,34 +426,16 @@ namespace SmartMarketplace.Pages
                 "Kotlin", "Android", "iOS", "WordPress", "Shopify", "Magento", "Drupal"
             };
             
-            var foundTechs = new List<string>();
-            
-            // Check for each technology in the input
             foreach (var tech in commonTechs)
             {
-                if (input.IndexOf(tech, StringComparison.OrdinalIgnoreCase) >= 0)
+                if (input.IndexOf(tech, StringComparison.OrdinalIgnoreCase) >= 0 && 
+                    !info.Expertises.Contains(tech, StringComparer.OrdinalIgnoreCase))
                 {
-                    foundTechs.Add(tech);
+                    info.Expertises.Add(tech);
                 }
             }
             
-            // If no technologies found, extract words that might be technologies
-            if (foundTechs.Count == 0)
-            {
-                var words = input.Split(new[] { ' ', ',', '.', ';', ':', '/', '\\', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var word in words)
-                {
-                    // Words that are likely technologies (not common words, numbers, etc.)
-                    if (word.Length > 2 && !decimal.TryParse(word, out _) && 
-                        !new[] { "dh", "mad", "dirhams", "pour", "avec", "and", "the", "une", "des", "les" }
-                            .Contains(word.ToLowerInvariant()))
-                    {
-                        foundTechs.Add(word);
-                    }
-                }
-            }
-            
-            return foundTechs;
+            return info;
         }
         
         private string ExtractJsonFromResponse(string response)
@@ -293,14 +452,16 @@ namespace SmartMarketplace.Pages
             return response; // Return the original if no JSON found
         }
         
-        private Mission GenerateFallbackMission(string simpleInput, string grokResponse, decimal budget, List<string> technologies)
+        private Mission GenerateFallbackMission(string simpleInput, string grokResponse, ExtractedInformation extractedInfo)
         {
-            string techString = string.Join(", ", technologies);
-            string title = $"Développement {techString}";
+            string techString = string.Join(", ", extractedInfo.Expertises);
+            string title = !string.IsNullOrEmpty(extractedInfo.Position) 
+                ? extractedInfo.Position 
+                : $"Développement {techString}";
             
             if (title.Length > 80)
             {
-                title = $"Développement {technologies.FirstOrDefault() ?? "web"}";
+                title = $"Développement {extractedInfo.Expertises.FirstOrDefault() ?? "web"}";
             }
             
             string description = !string.IsNullOrWhiteSpace(grokResponse) 
@@ -312,18 +473,18 @@ namespace SmartMarketplace.Pages
             {
                 Title = title,
                 Description = description,
-                Country = "Maroc",
-                City = "Casablanca",
-                WorkMode = "REMOTE",
-                Duration = 3,
-                DurationType = "MONTH",
+                Country = extractedInfo.Country,
+                City = extractedInfo.City,
+                WorkMode = extractedInfo.WorkMode,
+                Duration = extractedInfo.Duration,
+                DurationType = extractedInfo.DurationType,
                 StartImmediately = true,
-                ExperienceYear = "3-7",
-                ContractType = "REGIE",
-                EstimatedDailyRate = budget,
-                Domain = "Développement web",
-                Position = $"Développeur {technologies.FirstOrDefault() ?? "web"}",
-                RequiredExpertises = technologies
+                ExperienceYear = extractedInfo.Experience,
+                ContractType = extractedInfo.ContractType,
+                EstimatedDailyRate = extractedInfo.Salary,
+                Domain = extractedInfo.Domain,
+                Position = extractedInfo.Position,
+                RequiredExpertises = extractedInfo.Expertises
             };
         }
     }

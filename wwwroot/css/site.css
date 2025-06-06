@@ -367,3 +367,25 @@ textarea.form-control {
   font-weight: 500;
   color: #333;
 }
+
+/* Mission container layout */
+.mission-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Input and output sections */
+.input-section {
+  margin-bottom: 30px;
+}
+
+.output-section {
+  margin-top: 30px;
+}
+
+/* Mission card */
+.mission-card {
+  border: 1px solid #d0d9e4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
