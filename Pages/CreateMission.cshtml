@@ -1,0 +1,276 @@
+@page
+@model SmartMarketplace.Pages.CreateMissionModel
+@{
+    ViewData["Title"] = "SmartMarketplace - Créer une mission";
+}
+
+<div class="create-mission-page">
+    <h1>Créer une nouvelle mission</h1>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger mb-4">
+            <h4 class="alert-heading">Erreur</h4>
+            <p>@Model.ErrorMessage</p>
+        </div>
+    }
+
+    <div class="mission-container">
+        <!-- Formulaire d'entrée -->
+        <div class="input-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Exprimez votre besoin simplement</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Generate">
+                        <div class="form-group">
+                            <label for="simpleInput" class="control-label">Décrivez votre besoin en quelques mots</label>
+                            <textarea name="simpleInput" id="simpleInput" class="form-control" rows="3" placeholder="Exemple: Je cherche un ingénieur DevOps à Rabat pour 7000 DH" required>@Model.SimpleInput</textarea>
+                            <small class="form-text text-muted">Indiquez le rôle, la localisation, le budget, et toute autre information pertinente.</small>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Générer la mission</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mission générée -->
+        @if (Model.ShowGeneratedMission)
+        {
+            <div class="output-section">
+                <div class="alert alert-info mb-4">
+                    <p>Voici la mission générée à partir de votre besoin: <strong>@Model.SimpleInput</strong></p>
+                    <p>Vous pouvez modifier les détails avant de la publier.</p>
+                </div>
+                
+                <div class="card mission-card">
+                    <div class="card-header">
+                        <h5>Détails de la mission</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" class="mission-form-container">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.Title" class="control-label required-field">Titre</label>
+                                <input asp-for="Mission.Title" class="form-control" />
+                                <span asp-validation-for="Mission.Title" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.Description" class="control-label required-field">Description</label>
+                                <textarea asp-for="Mission.Description" class="form-control" rows="6"></textarea>
+                                <span asp-validation-for="Mission.Description" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.Country" class="control-label required-field">Pays</label>
+                                        <input asp-for="Mission.Country" class="form-control" />
+                                        <span asp-validation-for="Mission.Country" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.City" class="control-label required-field">Ville</label>
+                                        <input asp-for="Mission.City" class="form-control" />
+                                        <span asp-validation-for="Mission.City" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.WorkMode" class="control-label required-field">Mode de travail</label>
+                                <select asp-for="Mission.WorkMode" asp-items="Model.WorkModeOptions" class="form-select">
+                                    <option value="">-- Sélectionner un mode de travail --</option>
+                                </select>
+                                <span asp-validation-for="Mission.WorkMode" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.Duration" class="control-label required-field">Durée</label>
+                                        <input asp-for="Mission.Duration" class="form-control" type="number" min="1" />
+                                        <span asp-validation-for="Mission.Duration" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.DurationType" class="control-label required-field">Type de durée</label>
+                                        <select asp-for="Mission.DurationType" asp-items="Model.DurationTypeOptions" class="form-select">
+                                            <option value="">-- Sélectionner un type --</option>
+                                        </select>
+                                        <span asp-validation-for="Mission.DurationType" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <div class="form-check">
+                                    <input asp-for="Mission.StartImmediately" class="form-check-input" type="checkbox" id="startImmediately" />
+                                    <label asp-for="Mission.StartImmediately" class="form-check-label" for="startImmediately">Démarrage immédiat</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3" id="startDateGroup">
+                                <label asp-for="Mission.StartDate" class="control-label">Date de début</label>
+                                <input asp-for="Mission.StartDate" class="form-control" type="date" />
+                                <span asp-validation-for="Mission.StartDate" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.ExperienceYear" class="control-label required-field">Années d'expérience requises</label>
+                                <select asp-for="Mission.ExperienceYear" asp-items="Model.ExperienceYearOptions" class="form-select">
+                                    <option value="">-- Sélectionner une expérience --</option>
+                                </select>
+                                <span asp-validation-for="Mission.ExperienceYear" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.ContractType" class="control-label required-field">Type de contrat</label>
+                                <select asp-for="Mission.ContractType" asp-items="Model.ContractTypeOptions" class="form-select">
+                                    <option value="">-- Sélectionner un type de contrat --</option>
+                                </select>
+                                <span asp-validation-for="Mission.ContractType" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Mission.EstimatedDailyRate" class="control-label">Tarif journalier estimé (DH)</label>
+                                <input asp-for="Mission.EstimatedDailyRate" class="form-control" type="number" step="0.01" min="0" />
+                                <span asp-validation-for="Mission.EstimatedDailyRate" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.Domain" class="control-label">Domaine</label>
+                                        <input asp-for="Mission.Domain" class="form-control" />
+                                        <span asp-validation-for="Mission.Domain" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="Mission.Position" class="control-label">Poste</label>
+                                        <input asp-for="Mission.Position" class="form-control" />
+                                        <span asp-validation-for="Mission.Position" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="ExpertisesInput" class="control-label">Expertises requises (séparées par des virgules)</label>
+                                <textarea name="ExpertisesInput" id="ExpertisesInput" class="form-control" rows="2">@Model.ExpertisesInputValue</textarea>
+                                <small class="form-text text-muted">Exemple: Docker, Kubernetes, AWS</small>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <button type="submit" class="btn btn-primary">Publier la mission</button>
+                                <a asp-page="./CreateMission" class="btn btn-secondary">Recommencer</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Mission publiée -->
+        @if (Model.SubmissionSuccessful)
+        {
+            <div class="output-section">
+                <div class="alert alert-success mb-4">
+                    <h4 class="alert-heading">Mission publiée avec succès!</h4>
+                    <p>Votre mission a été publiée et est maintenant visible par les freelances.</p>
+                </div>
+                
+                <div class="card mb-4 mission-card">
+                    <div class="card-header">
+                        <h5>@Model.Mission.Title</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mission-details">
+                            <div class="mission-description">
+                                <h6>Description</h6>
+                                <p>@Model.Mission.Description</p>
+                            </div>
+                            
+                            <div class="mission-info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Localisation:</span>
+                                    <span class="info-value">@Model.Mission.City, @Model.Mission.Country</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Mode de travail:</span>
+                                    <span class="info-value">@Model.Mission.WorkMode</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Durée:</span>
+                                    <span class="info-value">@Model.Mission.Duration @Model.Mission.DurationType</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Démarrage:</span>
+                                    <span class="info-value">@(Model.Mission.StartImmediately ? "Immédiat" : Model.Mission.StartDate?.ToString("dd/MM/yyyy"))</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Expérience requise:</span>
+                                    <span class="info-value">@Model.Mission.ExperienceYear ans</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Type de contrat:</span>
+                                    <span class="info-value">@Model.Mission.ContractType</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">TJM:</span>
+                                    <span class="info-value">@Model.Mission.EstimatedDailyRate DH</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Domaine:</span>
+                                    <span class="info-value">@Model.Mission.Domain</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Poste:</span>
+                                    <span class="info-value">@Model.Mission.Position</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Expertises requises:</span>
+                                    <span class="info-value">@string.Join(", ", Model.Mission.RequiredExpertises)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <a asp-page="./CreateMission" class="btn btn-primary">Créer une autre mission</a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Toggle visibility of start date field based on StartImmediately checkbox
+        $(document).ready(function() {
+            function toggleStartDate() {
+                if ($('#startImmediately').is(':checked')) {
+                    $('#startDateGroup').hide();
+                } else {
+                    $('#startDateGroup').show();
+                }
+            }
+            
+            // Initial state
+            toggleStartDate();
+            
+            // On change
+            $('#startImmediately').change(toggleStartDate);
+        });
+    </script>
+}
