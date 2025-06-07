@@ -12,12 +12,16 @@ namespace SmartMarketplace.Services
     public class GrokService : IGrokService
     {
         private readonly HttpClient _httpClient;
+        private readonly IPromptService _promptService;
+        private readonly IMissionTemplateService _templateService;
         private const string ApiUrl = "https://api.x.ai/v1/chat/completions";
         private const string ApiKey = "xai-y7lIUR23aSbFKStNYfGqdnW56WwfQTEDxghnEIPpXfvNE8qnWaIs8hbAemsNKGCeYTLON1vOnUOyxboZ";
 
-        public GrokService(HttpClient httpClient)
+        public GrokService(HttpClient httpClient, IPromptService promptService, IMissionTemplateService templateService)
         {
             _httpClient = httpClient;
+            _promptService = promptService;
+            _templateService = templateService;
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
@@ -80,55 +84,8 @@ namespace SmartMarketplace.Services
         {
             try
             {
-                // Build a detailed prompt that respects the extracted values
-                string expertisesJson = JsonSerializer.Serialize(extractedInfo.Expertises);
-                string titlePart = string.IsNullOrEmpty(extractedInfo.Title) ? "" : $"Title={extractedInfo.Title}, ";
-                string positionPart = string.IsNullOrEmpty(extractedInfo.Position) ? "" : $"Position={extractedInfo.Position}, ";
-                string domainPart = string.IsNullOrEmpty(extractedInfo.Domain) ? "" : $"Domain={extractedInfo.Domain}, ";
-                
-                string prompt = $@"
-                Generate a detailed freelance mission based on these extracted details: 
-                {titlePart}Country={extractedInfo.Country}, City={extractedInfo.City}, 
-                WorkMode={extractedInfo.WorkMode}, Duration={extractedInfo.Duration} {extractedInfo.DurationType}, 
-                EstimatedDailyRate={extractedInfo.Salary} {extractedInfo.Currency}, 
-                {positionPart}{domainPart}ExperienceYear={extractedInfo.Experience}, 
-                ContractType={extractedInfo.ContractType}, RequiredExpertises={expertisesJson}.
-                
-                Original input: '{simpleInput}'
-                
-                IMPORTANT: You MUST respect ALL the extracted values exactly as provided. Do not change or override:
-                - The city name (e.g., if 'Rabat' is specified, don't change it to 'Casablanca')
-                - The salary amount (e.g., if '7000' is specified, use exactly that value)
-                - The work mode (REMOTE, ONSITE, HYBRID)
-                - The duration and duration type
-                - Any other explicitly provided values
-                
-                For missing fields, generate reasonable values based on the role and context:
-                - Create a professional title if not provided
-                - Generate a detailed technical description including:
-                  * Project context
-                  * Developer responsibilities
-                  * Expected deliverables
-                  * Technical stack details
-                - Add relevant required expertise if not enough are provided
-                
-                Return ONLY a valid JSON object with the following structure:
-                {{
-                  ""title"": ""Professional title"",
-                  ""description"": ""Detailed description"",
-                  ""country"": ""{extractedInfo.Country}"",
-                  ""city"": ""{extractedInfo.City}"",
-                  ""workMode"": ""{extractedInfo.WorkMode}"",
-                  ""duration"": {extractedInfo.Duration},
-                  ""durationType"": ""{extractedInfo.DurationType}"",
-                  ""startImmediately"": true,
-                  ""experienceYear"": ""{extractedInfo.Experience}"",
-                  ""contractType"": ""{extractedInfo.ContractType}"",
-                  ""estimatedDailyRate"": {extractedInfo.Salary},
-                  ""domain"": ""Domain field"",
-                  ""position"": ""Position title"",
-                  ""requiredExpertises"": [""expertise1"", ""expertise2"", ...]
-                }}";
+                // Build a sophisticated prompt based on the domain and context
+                string prompt = BuildIntelligentPrompt(simpleInput, extractedInfo);
 
                 // Call the API
                 string grokResponse = await CallGrokApiAsync(prompt);
@@ -149,7 +106,7 @@ namespace SmartMarketplace.Services
                         
                         var generatedMission = JsonSerializer.Deserialize<Mission>(jsonContent, options);
                         
-                        // Ensure the extracted values are preserved
+                        // Ensure the extracted values are preserved and validate the result
                         if (generatedMission != null)
                         {
                             // Override with extracted values to ensure they're preserved
@@ -178,6 +135,9 @@ namespace SmartMarketplace.Services
                                 generatedMission.StartDate = null;
                             }
                             
+                            // Validate and enhance the generated mission
+                            ValidateAndEnhanceMission(generatedMission, extractedInfo);
+                            
                             return generatedMission;
                         }
                     }
@@ -188,13 +148,244 @@ namespace SmartMarketplace.Services
                 }
                 
                 // Fallback to a basic mission if API call fails or returns invalid JSON
-                return GenerateFallbackMission(simpleInput, extractedInfo);
+                return GenerateIntelligentFallbackMission(simpleInput, extractedInfo);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in GenerateFullMissionAsync: {ex.Message}");
-                return GenerateFallbackMission(simpleInput, extractedInfo);
+                return GenerateIntelligentFallbackMission(simpleInput, extractedInfo);
             }
+        }
+
+        private string BuildIntelligentPrompt(string simpleInput, ExtractedInformation extractedInfo)
+        {
+            // Déterminer le domaine à partir des informations extraites
+            var domain = ExtractDomainFromInfo(extractedInfo);
+            
+            // Utiliser le service de prompts pour générer un prompt spécialisé
+            return _promptService.GeneratePrompt(domain, extractedInfo, simpleInput);
+        }
+        
+        private string ExtractDomainFromInfo(ExtractedInformation info)
+        {
+            if (!string.IsNullOrEmpty(info.Domain))
+            {
+                // Extraire le domaine de "Développement Backend" -> "Backend"
+                var parts = info.Domain.Split(' ');
+                if (parts.Length > 1)
+                {
+                    return parts[1]; // "Backend", "Frontend", etc.
+                }
+            }
+            
+            if (!string.IsNullOrEmpty(info.Position))
+            {
+                if (info.Position.Contains("Backend")) return "Backend";
+                if (info.Position.Contains("Frontend")) return "Frontend";
+                if (info.Position.Contains("Mobile")) return "Mobile";
+                if (info.Position.Contains("DevOps")) return "DevOps";
+                if (info.Position.Contains("Fullstack")) return "Fullstack";
+            }
+            
+            return "Backend"; // Défaut
+        }
+
+        private string DetermineProjectContext(string input, ExtractedInformation extractedInfo)
+        {
+            var contexts = new Dictionary<string, string>
+            {
+                ["e-commerce"] = "Développement d'une plateforme e-commerce moderne avec gestion des commandes, paiements et inventaire",
+                ["marketplace"] = "Création d'une marketplace multi-vendeurs avec système de commission et gestion des transactions",
+                ["fintech"] = "Application fintech sécurisée avec intégration bancaire et conformité réglementaire",
+                ["startup"] = "Projet innovant en phase de croissance nécessitant une architecture scalable",
+                ["entreprise"] = "Solution d'entreprise robuste avec intégration aux systèmes existants",
+                ["mobile"] = "Application mobile native/hybride avec expérience utilisateur optimisée",
+                ["web"] = "Application web moderne avec interface responsive et performance optimisée",
+                ["api"] = "Développement d'API RESTful/GraphQL avec documentation complète",
+                ["devops"] = "Mise en place d'infrastructure cloud et pipeline CI/CD automatisé",
+                ["data"] = "Solution de traitement et analyse de données avec tableaux de bord interactifs"
+            };
+
+            string lowerInput = input.ToLower();
+            foreach (var context in contexts)
+            {
+                if (lowerInput.Contains(context.Key))
+                {
+                    return context.Value;
+                }
+            }
+
+            // Default context based on domain
+            if (!string.IsNullOrEmpty(extractedInfo.Domain))
+            {
+                if (extractedInfo.Domain.Contains("Mobile"))
+                    return contexts["mobile"];
+                if (extractedInfo.Domain.Contains("DevOps"))
+                    return contexts["devops"];
+                if (extractedInfo.Domain.Contains("Data"))
+                    return contexts["data"];
+            }
+
+            return "Projet de développement logiciel nécessitant une expertise technique approfondie";
+        }
+
+        private string GetRoleSpecificRequirements(ExtractedInformation extractedInfo)
+        {
+            var requirements = new Dictionary<string, string>
+            {
+                ["Frontend"] = "Maîtrise des frameworks modernes, responsive design, optimisation des performances, tests unitaires",
+                ["Backend"] = "Architecture API, sécurité, optimisation base de données, scalabilité, tests d'intégration",
+                ["Fullstack"] = "Vision complète du produit, coordination front/back, architecture système, polyvalence technique",
+                ["Mobile"] = "Développement natif/hybride, publication stores, optimisation mobile, tests sur devices",
+                ["DevOps"] = "Infrastructure as Code, monitoring, sécurité, automatisation, cloud computing",
+                ["Data"] = "Modélisation données, ETL, visualisation, machine learning, big data technologies"
+            };
+
+            if (!string.IsNullOrEmpty(extractedInfo.Position))
+            {
+                foreach (var req in requirements)
+                {
+                    if (extractedInfo.Position.Contains(req.Key))
+                    {
+                        return req.Value;
+                    }
+                }
+            }
+
+            return "Expertise technique solide, autonomie, capacité d'analyse et de résolution de problèmes";
+        }
+
+        private string GetIndustryContext(string input)
+        {
+            var industries = new Dictionary<string, string>
+            {
+                ["banque"] = "Secteur bancaire avec contraintes de sécurité et conformité réglementaire strictes",
+                ["assurance"] = "Industrie de l'assurance nécessitant fiabilité et gestion des risques",
+                ["retail"] = "Commerce de détail avec focus sur l'expérience client et la performance",
+                ["santé"] = "Domaine médical avec respect des normes RGPD et sécurité des données",
+                ["éducation"] = "Secteur éducatif avec interface intuitive et accessibilité",
+                ["logistique"] = "Supply chain et logistique avec optimisation des processus",
+                ["immobilier"] = "Marché immobilier avec géolocalisation et visualisation avancée"
+            };
+
+            string lowerInput = input.ToLower();
+            foreach (var industry in industries)
+            {
+                if (lowerInput.Contains(industry.Key))
+                {
+                    return industry.Value;
+                }
+            }
+
+            return "Environnement professionnel dynamique avec standards de qualité élevés";
+        }
+
+        private void ValidateAndEnhanceMission(Mission mission, ExtractedInformation extractedInfo)
+        {
+            // Ensure minimum expertise count
+            if (mission.RequiredExpertises == null || mission.RequiredExpertises.Count < 3)
+            {
+                mission.RequiredExpertises = EnhanceExpertisesList(extractedInfo);
+            }
+
+            // Validate title length and quality
+            if (string.IsNullOrEmpty(mission.Title) || mission.Title.Length < 10)
+            {
+                mission.Title = GenerateIntelligentTitle(extractedInfo);
+            }
+
+            // Ensure description is substantial
+            if (string.IsNullOrEmpty(mission.Description) || mission.Description.Length < 200)
+            {
+                mission.Description = GenerateIntelligentDescription(extractedInfo);
+            }
+        }
+
+        private List<string> EnhanceExpertisesList(ExtractedInformation extractedInfo)
+        {
+            var expertises = new List<string>(extractedInfo.Expertises);
+            
+            // Add complementary technologies based on existing ones
+            var complementaryTechs = new Dictionary<string, List<string>>
+            {
+                ["React"] = new List<string> { "Redux", "React Router", "Jest" },
+                ["Angular"] = new List<string> { "TypeScript", "RxJS", "Angular Material" },
+                ["Vue.js"] = new List<string> { "Vuex", "Vue Router", "Nuxt.js" },
+                ["Node.js"] = new List<string> { "Express.js", "MongoDB", "JWT" },
+                ["PHP"] = new List<string> { "MySQL", "Composer", "PHPUnit" },
+                ["Python"] = new List<string> { "Django", "PostgreSQL", "Redis" },
+                ["DevOps"] = new List<string> { "Docker", "Kubernetes", "Jenkins", "AWS" },
+                ["Mobile"] = new List<string> { "React Native", "Firebase", "App Store" }
+            };
+
+            foreach (var expertise in extractedInfo.Expertises)
+            {
+                if (complementaryTechs.ContainsKey(expertise))
+                {
+                    foreach (var complementary in complementaryTechs[expertise])
+                    {
+                        if (!expertises.Contains(complementary))
+                        {
+                            expertises.Add(complementary);
+                        }
+                    }
+                }
+            }
+
+            // Ensure minimum of 4 expertises
+            if (expertises.Count < 4)
+            {
+                var defaultTechs = new List<string> { "Git", "Agile", "REST API", "Responsive Design" };
+                foreach (var tech in defaultTechs)
+                {
+                    if (!expertises.Contains(tech) && expertises.Count < 6)
+                    {
+                        expertises.Add(tech);
+                    }
+                }
+            }
+
+            return expertises;
+        }
+
+        private string GenerateIntelligentTitle(ExtractedInformation extractedInfo)
+        {
+            var titleTemplates = new List<string>
+            {
+                $"{extractedInfo.Position} - {extractedInfo.City} ({extractedInfo.WorkMode})",
+                $"Mission {extractedInfo.Position} - {extractedInfo.Duration} {(extractedInfo.DurationType == "MONTH" ? "mois" : "ans")}",
+                $"{extractedInfo.Position} Expérimenté - Projet Innovant",
+                $"Développeur {string.Join("/", extractedInfo.Expertises.Take(2))} - {extractedInfo.City}"
+            };
+
+            return titleTemplates[new Random().Next(titleTemplates.Count)];
+        }
+
+        private string GenerateIntelligentDescription(ExtractedInformation extractedInfo)
+        {
+            return $@"Nous recherchons un {extractedInfo.Position} expérimenté pour rejoindre notre équipe sur un projet stratégique.
+
+🎯 CONTEXTE DU PROJET :
+Développement d'une solution innovante nécessitant une expertise technique approfondie et une approche méthodique.
+
+💼 VOS MISSIONS :
+• Conception et développement de fonctionnalités complexes
+• Collaboration étroite avec l'équipe produit et design
+• Optimisation des performances et de la sécurité
+• Participation aux revues de code et à l'amélioration continue
+• Documentation technique et formation des équipes
+
+🛠️ STACK TECHNIQUE :
+{string.Join(", ", extractedInfo.Expertises)}
+
+📍 MODALITÉS :
+• Localisation : {extractedInfo.City}, {extractedInfo.Country}
+• Mode : {extractedInfo.WorkMode}
+• Durée : {extractedInfo.Duration} {(extractedInfo.DurationType == "MONTH" ? "mois" : "ans")}
+• Expérience requise : {extractedInfo.Experience} ans
+• Type de contrat : {extractedInfo.ContractType}
+
+Rejoignez-nous pour contribuer à un projet d'envergure dans un environnement technique stimulant !";
         }
         
         private string ExtractJsonFromResponse(string response)
@@ -211,22 +402,22 @@ namespace SmartMarketplace.Services
             return response; // Return the original if no JSON found
         }
         
-        private Mission GenerateFallbackMission(string simpleInput, ExtractedInformation extractedInfo)
+        private Mission GenerateIntelligentFallbackMission(string simpleInput, ExtractedInformation extractedInfo)
         {
-            string techString = string.Join(", ", extractedInfo.Expertises);
-            string title = !string.IsNullOrEmpty(extractedInfo.Position) 
-                ? extractedInfo.Position 
-                : $"Développement {techString}";
+            // Déterminer le domaine
+            var domain = ExtractDomainFromInfo(extractedInfo);
             
-            if (title.Length > 80)
-            {
-                title = $"Développement {extractedInfo.Expertises.FirstOrDefault() ?? "web"}";
-            }
+            // Utiliser le service de templates pour générer une mission de qualité
+            var template = _templateService.GetTemplate(domain, extractedInfo.Experience);
             
-            string description = $"Nous recherchons un développeur expérimenté en {techString} pour un projet de développement web. " +
-                                $"Le candidat devra maîtriser les technologies mentionnées et être capable de travailler de manière autonome. " +
-                                $"Cette mission se déroulera à {extractedInfo.City}, {extractedInfo.Country} en mode {extractedInfo.WorkMode.ToLower()} " +
-                                $"pour une durée de {extractedInfo.Duration} {(extractedInfo.DurationType == "MONTH" ? "mois" : "ans")}.";
+            // Générer le titre avec le template
+            var title = GenerateTitleFromTemplate(template, extractedInfo);
+            
+            // Générer la description avec le template
+            var description = _templateService.GenerateContextualDescription(template, extractedInfo);
+            
+            // Obtenir les technologies spécifiques au domaine
+            var expertises = _templateService.GetDomainSpecificTechnologies(domain);
             
             return new Mission
             {
@@ -243,8 +434,26 @@ namespace SmartMarketplace.Services
                 EstimatedDailyRate = extractedInfo.Salary,
                 Domain = extractedInfo.Domain,
                 Position = extractedInfo.Position,
-                RequiredExpertises = extractedInfo.Expertises.Count > 0 ? extractedInfo.Expertises : new List<string> { "Développement web" }
+                RequiredExpertises = expertises
             };
+        }
+        
+        private string GenerateTitleFromTemplate(MissionTemplate template, ExtractedInformation info)
+        {
+            var titleTemplate = template.TitleTemplate;
+            
+            // Remplacer les placeholders
+            titleTemplate = titleTemplate.Replace("{tech}", string.Join("/", info.Expertises.Take(2)));
+            titleTemplate = titleTemplate.Replace("{city}", info.City);
+            
+            // Si le template est trop générique, créer un titre personnalisé
+            if (titleTemplate.Length < 20)
+            {
+                var mainTech = info.Expertises.FirstOrDefault() ?? template.CoreTechnologies.FirstOrDefault();
+                return $"{info.Position} {mainTech} - {info.City} ({info.WorkMode})";
+            }
+            
+            return titleTemplate;
         }
     }
 }

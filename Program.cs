@@ -6,7 +6,12 @@ builder.Services.AddRazorPages(options =>
     // Set CreateMission as the default page
     options.Conventions.AddPageRoute("/CreateMission", "");
 });
+
+// Register all services
 builder.Services.AddHttpClient<SmartMarketplace.Services.IGrokService, SmartMarketplace.Services.GrokService>();
+builder.Services.AddScoped<SmartMarketplace.Services.IInputAnalysisService, SmartMarketplace.Services.InputAnalysisService>();
+builder.Services.AddScoped<SmartMarketplace.Services.IMissionTemplateService, SmartMarketplace.Services.MissionTemplateService>();
+builder.Services.AddScoped<SmartMarketplace.Services.IPromptService, SmartMarketplace.Services.PromptService>();
 
 var app = builder.Build();
 
