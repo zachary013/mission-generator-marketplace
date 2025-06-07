@@ -88,6 +88,13 @@ Génère un JSON avec mission détaillée...
 
 ## 🎨 Interface Utilisateur
 
+#### 1. Le client exprime son besoin
+
+<img width="1512" alt="Screenshot 2025-06-07 at 17 39 55" src="https://github.com/user-attachments/assets/c7b0742c-9641-4572-bfe7-b2db37eaba28" />
+
+#### 2. Mission generee qui repond a son besoin
+
+<img width="1512" alt="Screenshot 2025-06-07 at 17 40 21" src="https://github.com/user-attachments/assets/1c250db5-58ed-4250-9c2b-5fbef3be24a0" />
 
 
 ---
