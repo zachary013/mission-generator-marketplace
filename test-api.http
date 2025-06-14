@@ -1,0 +1,106 @@
+### SmartMarketplace API Tests
+### Base URL
+@baseUrl = https://localhost:7000
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Check AI Services Status
+GET {{baseUrl}}/api/Mission/ai-status
+
+### 3. Generate Mission - Backend Node.js
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "Backend Node.js Rabat 3500DH remote 6 mois senior",
+  "preferredProvider": "Grok"
+}
+
+### 4. Generate Mission - Frontend React
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "Frontend React Casablanca 4000DH"
+}
+
+### 5. Generate Mission - DevOps
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "DevOps AWS Marrakech 5000DH"
+}
+
+### 6. Generate Mission - Full Stack
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "Fullstack MERN Rabat 4500DH hybrid 3 mois"
+}
+
+### 7. Generate Mission - Mobile
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "Mobile React Native Tanger 3000DH"
+}
+
+### 8. Save Mission
+POST {{baseUrl}}/api/Mission/save
+Content-Type: application/json
+
+{
+  "title": "Développeur Backend Node.js - Test",
+  "description": "Mission de test pour l'API",
+  "country": "Morocco",
+  "city": "Rabat",
+  "workMode": "REMOTE",
+  "duration": 3,
+  "durationType": "MONTH",
+  "startImmediately": true,
+  "experienceYear": "3-7",
+  "contractType": "FORFAIT",
+  "estimatedDailyRate": 350,
+  "domain": "Backend Development",
+  "position": "Développeur Backend",
+  "requiredExpertises": ["Node.js", "Express.js", "MongoDB"]
+}
+
+### 9. Get All Missions
+GET {{baseUrl}}/api/Mission
+
+### 10. Get Mission by ID (replace with actual ID)
+GET {{baseUrl}}/api/Mission/12345678-1234-1234-1234-123456789012
+
+### 11. Delete Mission (replace with actual ID)
+DELETE {{baseUrl}}/api/Mission/12345678-1234-1234-1234-123456789012
+
+### 12. Test Error Handling - Invalid Input
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": ""
+}
+
+### 13. Test with Preferred Provider - OpenAI
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "Python Django Fès 2800DH onsite",
+  "preferredProvider": "OpenAI"
+}
+
+### 14. Test with Preferred Provider - Mistral
+POST {{baseUrl}}/api/Mission/generate
+Content-Type: application/json
+
+{
+  "simpleInput": "UI/UX Designer Agadir 2500DH remote",
+  "preferredProvider": "Mistral"
+}

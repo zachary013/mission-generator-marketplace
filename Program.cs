@@ -1,37 +1,88 @@
+using SmartMarketplace.Configuration;
+using SmartMarketplace.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages(options =>
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    // Set CreateMission as the default page
-    options.Conventions.AddPageRoute("/CreateMission", "");
+    c.SwaggerDoc("v1", new() { 
+        Title = "SmartMarketplace API", 
+        Version = "v1",
+        Description = "API pour la génération intelligente de missions freelance avec IA"
+    });
+    
+    // Include XML comments for better documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
-// Register all services
-builder.Services.AddHttpClient<SmartMarketplace.Services.IGrokService, SmartMarketplace.Services.GrokService>();
-builder.Services.AddScoped<SmartMarketplace.Services.IInputAnalysisService, SmartMarketplace.Services.InputAnalysisService>();
-builder.Services.AddScoped<SmartMarketplace.Services.IMissionTemplateService, SmartMarketplace.Services.MissionTemplateService>();
-builder.Services.AddScoped<SmartMarketplace.Services.IPromptService, SmartMarketplace.Services.PromptService>();
+// Configure AI settings
+builder.Services.Configure<AIConfig>(builder.Configuration.GetSection("AI"));
+
+// Register HTTP clients for AI services
+builder.Services.AddHttpClient<IGrokService, GrokService>();
+builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
+builder.Services.AddHttpClient<IMistralService, MistralService>();
+
+// Register services
+builder.Services.AddScoped<IGrokService, GrokService>();
+builder.Services.AddScoped<IOpenAIService, OpenAIService>();
+builder.Services.AddScoped<IMistralService, MistralService>();
+builder.Services.AddScoped<IAIService, AIService>();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Add logging
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+});
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    // Redirect to CreateMission page in case of errors
-    app.UseExceptionHandler("/CreateMission");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartMarketplace API v1");
+        c.RoutePrefix = string.Empty; // Swagger UI at root
+    });
 }
 
 app.UseHttpsRedirection();
-
-app.UseRouting();
-
+app.UseCors("AllowAll");
 app.UseAuthorization();
+app.MapControllers();
 
-app.MapStaticAssets();
-app.MapRazorPages()
-    .WithStaticAssets();
+// Add health check endpoint
+app.MapGet("/health", () => new { 
+    Status = "Healthy", 
+    Timestamp = DateTime.UtcNow,
+    Version = "1.0.0"
+});
+
+// Log startup information
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 SmartMarketplace API started successfully");
+logger.LogInformation("📖 Swagger UI available at: {BaseUrl}", app.Environment.IsDevelopment() ? "https://localhost:7000" : "Production URL");
 
 app.Run();

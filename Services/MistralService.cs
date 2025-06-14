@@ -6,16 +6,16 @@ using SmartMarketplace.Models;
 
 namespace SmartMarketplace.Services;
 
-public class GrokService : IGrokService
+public class MistralService : IMistralService
 {
     private readonly HttpClient _httpClient;
-    private readonly GrokConfig _config;
-    private readonly ILogger<GrokService> _logger;
+    private readonly MistralConfig _config;
+    private readonly ILogger<MistralService> _logger;
 
-    public GrokService(HttpClient httpClient, IOptions<AIConfig> aiConfig, ILogger<GrokService> logger)
+    public MistralService(HttpClient httpClient, IOptions<AIConfig> aiConfig, ILogger<MistralService> logger)
     {
         _httpClient = httpClient;
-        _config = aiConfig.Value.Grok;
+        _config = aiConfig.Value.Mistral;
         _logger = logger;
         
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
@@ -45,21 +45,21 @@ public class GrokService : IGrokService
             
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Grok API error: {StatusCode} - {Content}", 
+                _logger.LogError("Mistral API error: {StatusCode} - {Content}", 
                     response.StatusCode, await response.Content.ReadAsStringAsync());
                 return null;
             }
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            var grokResponse = JsonSerializer.Deserialize<GrokApiResponse>(responseContent);
+            var mistralResponse = JsonSerializer.Deserialize<MistralApiResponse>(responseContent);
             
-            if (grokResponse?.Choices?.FirstOrDefault()?.Message?.Content == null)
+            if (mistralResponse?.Choices?.FirstOrDefault()?.Message?.Content == null)
             {
-                _logger.LogError("Invalid Grok response structure");
+                _logger.LogError("Invalid Mistral response structure");
                 return null;
             }
 
-            var missionJson = grokResponse.Choices.First().Message.Content.Trim();
+            var missionJson = mistralResponse.Choices.First().Message.Content.Trim();
             
             // Clean JSON if it contains markdown formatting
             if (missionJson.StartsWith("```json"))
@@ -76,7 +76,7 @@ public class GrokService : IGrokService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating mission with Grok");
+            _logger.LogError(ex, "Error generating mission with Mistral");
             return null;
         }
     }
@@ -97,7 +97,7 @@ public class GrokService : IGrokService
         }
     }
 
-    private class GrokApiResponse
+    private class MistralApiResponse
     {
         public Choice[]? Choices { get; set; }
     }
