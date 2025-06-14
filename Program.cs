@@ -3,6 +3,9 @@ using SmartMarketplace.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure specific ports
+builder.WebHost.UseUrls("http://localhost:5000", "https://localhost:5001");
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -83,6 +86,6 @@ app.MapGet("/health", () => new {
 // Log startup information
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("🚀 SmartMarketplace API started successfully");
-logger.LogInformation("📖 Swagger UI available at: {BaseUrl}", app.Environment.IsDevelopment() ? "https://localhost:7000" : "Production URL");
+logger.LogInformation("📖 Swagger UI available at: http://localhost:5000 and https://localhost:5001");
 
 app.Run();

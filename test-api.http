@@ -1,6 +1,6 @@
 ### SmartMarketplace API Tests
 ### Base URL
-@baseUrl = https://localhost:7000
+@baseUrl = https://localhost:5001
 
 ### 1. Health Check
 GET {{baseUrl}}/health
