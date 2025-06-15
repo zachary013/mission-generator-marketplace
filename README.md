@@ -37,7 +37,7 @@ graph TB
     class Gemini,DeepSeek,Mistral ia
 ```
 
-## 📊 Models/
+## 📊 Structure des APIs
 
 ### 1. **POST** `/api/Mission/generate`
 Génère une mission freelance à partir d'une description simple.
@@ -152,7 +152,7 @@ Génère une mission au format JSON EXACT :
 }}";
 ```
 
-## ⚙️ Configuration APIs
+## ⚙️ Configuration des API keys
 
 ```json
 {
