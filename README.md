@@ -9,39 +9,32 @@ Cette API ASP.NET Core 9 permet de générer automatiquement des missions freela
 <img width="1511" alt="Screenshot 2025-06-15 at 01 27 07" src="https://github.com/user-attachments/assets/ce7cd61b-b464-4611-ad91-7800ea8e5232" />
 
 
-## 🏗️ Architecture
+## 🏗️ Architecture Simplifiée
 
 ```mermaid
-flowchart TB
-    Client[Client Next.js] -->|API Requests| API[SmartMarketplace API]
+graph TB
+    %% Système principal
+    Frontend["💻 Frontend Next.js"] --> Backend["⚙️ API SmartMarketplace"]
+    Backend --> Orchestrateur["🧠 Orchestrateur IA"]
     
-    API --> AIService[Service Orchestrateur IA]
+    %% Services IA
+    Orchestrateur --> Gemini["🔵 Gemini"]
+    Orchestrateur --> DeepSeek["🟠 DeepSeek"]
+    Orchestrateur --> Mistral["🟢 Mistral"]
     
-    AIService -->|1. Choix prioritaire| Gemini[Gemini]
-    AIService -->|2. Alternative| DeepSeek[DeepSeek]
-    AIService -->|3. Alternative| Mistral[Mistral]
-    AIService -->|4. Dernier recours| Fallback[Génération Locale]
+    %% Résultat
+    Gemini & DeepSeek & Mistral --> Orchestrateur
+    Orchestrateur --> Backend
+    Backend --> Frontend
     
-    Gemini --> GeminiAPI[API Google]
-    DeepSeek --> DeepSeekAPI[API OpenRouter]
-    Mistral --> MistralAPI[API Mistral]
+    %% Styles
+    classDef frontend fill:#47b0d1,stroke:none,color:white,font-weight:bold
+    classDef backend fill:#68ac68,stroke:none,color:white,font-weight:bold
+    classDef ia fill:#ffaa5e,stroke:none,color:white,font-weight:bold
     
-    GeminiAPI & DeepSeekAPI & MistralAPI -->|Réponse JSON| AIService
-    Fallback -->|Template| AIService
-    
-    AIService -->|Mission générée| API
-    API -->|Réponse JSON| Client
-    
-    style Client fill:#47b0d1,stroke:#333,stroke-width:2px
-    style API fill:#68ac68,stroke:#333,stroke-width:2px
-    style AIService fill:#68ac68,stroke:#333,stroke-width:2px
-    style Gemini fill:#ffaa5e,stroke:#333,stroke-width:2px
-    style DeepSeek fill:#ffaa5e,stroke:#333,stroke-width:2px
-    style Mistral fill:#ffaa5e,stroke:#333,stroke-width:2px
-    style Fallback fill:#ffaa5e,stroke:#333,stroke-width:2px
-    style GeminiAPI fill:#c792ea,stroke:#333,stroke-width:2px
-    style DeepSeekAPI fill:#c792ea,stroke:#333,stroke-width:2px
-    style MistralAPI fill:#c792ea,stroke:#333,stroke-width:2px
+    class Frontend frontend
+    class Backend,Orchestrateur backend
+    class Gemini,DeepSeek,Mistral ia
 ```
 
 ## 📊 Models/
