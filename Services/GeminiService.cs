@@ -18,7 +18,7 @@ public class GeminiService : IGeminiService
         _config = aiConfig.Value.Gemini;
         _logger = logger;
         
-        _httpClient.BaseAddress = new Uri(_config.BaseUrl);
+        // Don't set BaseAddress, we'll use full URLs
     }
 
     public async Task<Mission?> GenerateMissionAsync(string prompt)
@@ -48,7 +48,7 @@ public class GeminiService : IGeminiService
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"/models/{_config.Model}:generateContent?key={_config.ApiKey}", content);
+            var response = await _httpClient.PostAsync($"{_config.BaseUrl}/models/{_config.Model}:generateContent?key={_config.ApiKey}", content);
             
             if (!response.IsSuccessStatusCode)
             {

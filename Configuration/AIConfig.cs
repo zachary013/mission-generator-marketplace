@@ -4,8 +4,8 @@ public class AIConfig
 {
     public string DefaultProvider { get; set; } = "Gemini";
     public GeminiConfig Gemini { get; set; } = new();
-    public LlamaConfig Llama { get; set; } = new();
     public MistralConfig Mistral { get; set; } = new();
+    public DeepSeekConfig DeepSeek { get; set; } = new();
 }
 
 public class GeminiConfig
@@ -18,8 +18,8 @@ public class GeminiConfig
 public class LlamaConfig
 {
     public string ApiKey { get; set; } = string.Empty;
-    public string BaseUrl { get; set; } = "https://api.together.xyz/v1";
-    public string Model { get; set; } = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo";
+    public string BaseUrl { get; set; } = "https://api-inference.huggingface.co/models";
+    public string Model { get; set; } = "meta-llama/Meta-Llama-3-8B-Instruct";
 }
 
 public class MistralConfig
@@ -27,4 +27,11 @@ public class MistralConfig
     public string ApiKey { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = "https://api.mistral.ai/v1";
     public string Model { get; set; } = "mistral-small-2503";
+}
+
+public class DeepSeekConfig
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = "https://api.openrouter.ai/v1";
+    public string Model { get; set; } = "deepseek/deepseek-r1:free";
 }

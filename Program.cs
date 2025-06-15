@@ -29,14 +29,23 @@ builder.Services.AddSwaggerGen(c =>
 // Configure AI settings
 builder.Services.Configure<AIConfig>(builder.Configuration.GetSection("AI"));
 
-// Register HTTP clients for AI services
-builder.Services.AddHttpClient<IGeminiService, GeminiService>();
-builder.Services.AddHttpClient<ILlamaService, LlamaService>();
-builder.Services.AddHttpClient<IMistralService, MistralService>();
+// Register HTTP clients for AI services with timeout configuration
+builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient<IDeepSeekService, DeepSeekService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient<IMistralService, MistralService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // Register services
 builder.Services.AddScoped<IGeminiService, GeminiService>();
-builder.Services.AddScoped<ILlamaService, LlamaService>();
+builder.Services.AddScoped<IDeepSeekService, DeepSeekService>();
 builder.Services.AddScoped<IMistralService, MistralService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
