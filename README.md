@@ -1,10 +1,10 @@
 # 🚀 SmartMarketplace API - Backend ASP.NET Core 9
 
-> **API intelligente de génération de missions freelance avec intégration multi-IA (Grok, GPT-4o, Mistral)**
+> **API intelligente de génération de missions freelance avec intégration multi-IA (Gemini, DeepSeek, Mistral)**
 
 ## 📋 Vue d'ensemble
 
-Cette API ASP.NET Core 8 permet de générer automatiquement des missions freelance détaillées à partir de descriptions simples en utilisant 3 services d'IA différents avec système de fallback intelligent.
+Cette API ASP.NET Core 9 permet de générer automatiquement des missions freelance détaillées à partir de descriptions simples en utilisant 3 services d'IA différents avec système de fallback intelligent.
 
 ## 🏗️ Architecture
 
@@ -19,10 +19,10 @@ SmartMarketplace/
 ├── 🔧 Services/
 │   ├── IAIService.cs                 # Interface service principal
 │   ├── AIService.cs                  # Orchestrateur IA intelligent
-│   ├── IGrokService.cs               # Interface Grok
-│   ├── GrokService.cs                # Service Grok X.AI
-│   ├── IOpenAIService.cs             # Interface OpenAI
-│   ├── OpenAIService.cs              # Service GPT-4o
+│   ├── IGeminiService.cs             # Interface Gemini
+│   ├── GeminiService.cs              # Service Google Gemini
+│   ├── IDeepSeekService.cs           # Interface DeepSeek
+│   ├── DeepSeekService.cs            # Service DeepSeek
 │   ├── IMistralService.cs            # Interface Mistral
 │   └── MistralService.cs             # Service Mistral
 ├── ⚙️ Configuration/
@@ -41,7 +41,7 @@ Génère une mission freelance à partir d'une description simple.
 ```json
 {
   "simpleInput": "Backend Node.js Rabat 3500DH remote 6 mois senior",
-  "preferredProvider": "Grok" // Optionnel: "Grok", "OpenAI", "Mistral"
+  "preferredProvider": "DeepSeek" // Optionnel: "Gemini", "DeepSeek", "Mistral"
 }
 ```
 
@@ -68,7 +68,7 @@ Génère une mission freelance à partir d'une description simple.
     "requiredExpertises": ["Node.js", "Express.js", "MongoDB", "PostgreSQL"],
     "createdAt": "2025-06-14T22:00:00Z"
   },
-  "provider": "Grok"
+  "provider": "DeepSeek"
 }
 ```
 
@@ -102,21 +102,22 @@ Vérifie le statut des services IA.
 {
   "success": true,
   "data": {
-    "Grok": true,
-    "OpenAI": false,
-    "Mistral": true
+    "Gemini": true,
+    "DeepSeek": true,
+    "Mistral": false
   }
 }
 ```
 
 ## 🤖 Intelligence Artificielle
 
-### Système Multi-IA avec Fallback
+### Système Multi-IA
 
-1. **Provider Préféré** → Essaie le service demandé
-2. **Provider par Défaut** → Fallback vers le service configuré
-3. **Autres Providers** → Essaie les services restants
-4. **Fallback Intelligent** → Génération locale si tous échouent
+| Provider | Modèle | Type | Spécialités | API | Points forts |
+|----------|---------|------|-------------|-----|--------------|
+| 🟢 **Google Gemini** *(Défaut)* | `gemini-1.5-flash` | Multimodal | • Génération rapide<br>• Texte structuré<br>• Support français | Google Generative Language | • Équilibre vitesse/qualité<br>• Contextes professionnels<br>• Fiabilité éprouvée |
+| 🧠 **DeepSeek R1** | `deepseek/deepseek-r1:free` | Raisonnement | • Chain-of-Thought<br>• Analyse logique<br>• Missions techniques | OpenRouter (proxy) | • Réflexion étape par étape<br>• Structuration avancée<br>• Détails techniques |
+| 🇫🇷 **Mistral AI** | `mistral-small-2503` | Européen | • Contexte français<br>• Missions locales<br>• Conformité RGPD | Mistral AI API | • Souveraineté numérique<br>• Compréhension culturelle<br>• Standards européens |
 
 ### Extraction Intelligente
 
@@ -149,45 +150,35 @@ Génère une mission au format JSON EXACT :
 }}";
 ```
 
-## ⚙️ Configuration
-
-### 1. Clés API dans `appsettings.json`
+## ⚙️ Configuration APIs
 
 ```json
 {
   "AI": {
-    "DefaultProvider": "Grok",
-    "Grok": {
-      "ApiKey": "xai-YOUR_GROK_KEY_HERE",
-      "BaseUrl": "https://api.x.ai/v1",
-      "Model": "grok-beta"
+    "DefaultProvider": "Gemini",
+    "Gemini": {
+      "ApiKey": "AIzaSy-YOUR_GEMINI_KEY_HERE",
+      "BaseUrl": "https://generativelanguage.googleapis.com/v1beta",
+      "Model": "gemini-1.5-flash"
     },
-    "OpenAI": {
-      "ApiKey": "sk-YOUR_OPENAI_KEY_HERE",
-      "BaseUrl": "https://api.openai.com/v1",
-      "Model": "gpt-4o"
+    "DeepSeek": {
+      "ApiKey": "sk-or-v1-YOUR_DEEPSEEK_KEY_HERE",
+      "BaseUrl": "https://api.openrouter.ai/v1",
+      "Model": "deepseek/deepseek-r1:free"
     },
     "Mistral": {
       "ApiKey": "YOUR_MISTRAL_KEY_HERE",
       "BaseUrl": "https://api.mistral.ai/v1",
-      "Model": "mistral-small-latest"
+      "Model": "mistral-small-2503"
     }
   }
 }
 ```
 
-### 2. Variables d'environnement (Production)
-
-```bash
-export AI__Grok__ApiKey="xai-your-key"
-export AI__OpenAI__ApiKey="sk-your-key"
-export AI__Mistral__ApiKey="your-key"
-```
-
 ## 🚀 Installation et Démarrage
 
 ### Prérequis
-- **.NET 8.0 SDK**
+- **.NET 9.0 SDK**
 - **Clés API** pour au moins un service IA
 
 ### Installation
@@ -210,68 +201,10 @@ dotnet run
 
 ### Accès
 
-- **API** : `https://localhost:7000`
-- **Swagger UI** : `https://localhost:7000` (en développement)
-- **Health Check** : `https://localhost:7000/health`
+- **API** : `https://localhost:5001`
+- **Swagger UI** : `https://localhost:5001/swagger` (en développement)
+- **Health Check** : `https://localhost:5001/health`
 
-
-## 📊 Exemples de Génération
-
-### Input Simple → Mission Complète
-
-**Input :**
-```
-"DevOps AWS Marrakech 5000DH"
-```
-
-**Output :**
-```json
-{
-  "title": "Ingénieur DevOps AWS/Docker - Marrakech",
-  "description": "🎯 CONTEXTE : Migration cloud AWS avec microservices...",
-  "city": "Marrakech",
-  "estimatedDailyRate": 500,
-  "workMode": "REMOTE",
-  "domain": "DevOps",
-  "requiredExpertises": ["AWS", "Docker", "Kubernetes", "Terraform"]
-}
-```
-
-## 🔧 Fonctionnalités Avancées
-
-### 1. **Fallback Intelligent**
-Si tous les services IA échouent, génération locale basée sur des templates.
-
-### 2. **Validation Automatique**
-Validation des données d'entrée et de sortie avec messages d'erreur clairs.
-
-### 3. **Logging Complet**
-Traçabilité complète des appels API et erreurs.
-
-### 4. **CORS Configuré**
-Prêt pour intégration frontend.
-
-### 5. **Swagger Documentation**
-Documentation interactive automatique.
-
-## 🛡️ Gestion d'Erreurs
-
-### Codes de Réponse
-
-- **200** : Succès
-- **400** : Erreur de validation
-- **404** : Ressource non trouvée
-- **500** : Erreur serveur
-
-### Format d'Erreur
-
-```json
-{
-  "success": false,
-  "errorMessage": "Description de l'erreur",
-  "data": null
-}
-```
 
 ## 🔄 Workflow Complet
 
@@ -284,3 +217,10 @@ Documentation interactive automatique.
 7. **Validation** et enrichissement des données
 8. **Retour** de la mission complète
 
+
+## 👥 Team
+
+| Avatar                                                                                                  | Name | Role | GitHub |
+|---------------------------------------------------------------------------------------------------------|------|------|--------|
+| <img src="https://github.com/zachary013.png" width="50" height="50" style="border-radius: 50%"/>        | Zakariae Azarkan | WebCam Object Detection | [@zachary013](https://github.com/zachary013) |
+| <img src="https://github.com/Sam-Jab.png" width="50" height="50" style="border-radius: 50%"/>          | Salaheddine El Jably | Model Training | [@Sam-Jab](https://github.com/Sam-Jab) |
