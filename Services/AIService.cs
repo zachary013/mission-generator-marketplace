@@ -7,21 +7,21 @@ namespace SmartMarketplace.Services;
 
 public class AIService : IAIService
 {
-    private readonly IGrokService _grokService;
-    private readonly IOpenAIService _openAIService;
+    private readonly IGeminiService _geminiService;
+    private readonly ILlamaService _llamaService;
     private readonly IMistralService _mistralService;
     private readonly AIConfig _config;
     private readonly ILogger<AIService> _logger;
 
     public AIService(
-        IGrokService grokService,
-        IOpenAIService openAIService,
+        IGeminiService geminiService,
+        ILlamaService llamaService,
         IMistralService mistralService,
         IOptions<AIConfig> config,
         ILogger<AIService> logger)
     {
-        _grokService = grokService;
-        _openAIService = openAIService;
+        _geminiService = geminiService;
+        _llamaService = llamaService;
         _mistralService = mistralService;
         _config = config.Value;
         _logger = logger;
@@ -72,8 +72,8 @@ public class AIService : IAIService
         {
             return providerName.ToLower() switch
             {
-                "grok" => await _grokService.GenerateMissionAsync(prompt),
-                "openai" => await _openAIService.GenerateMissionAsync(prompt),
+                "gemini" => await _geminiService.GenerateMissionAsync(prompt),
+                "llama" => await _llamaService.GenerateMissionAsync(prompt),
                 "mistral" => await _mistralService.GenerateMissionAsync(prompt),
                 _ => null
             };
@@ -311,16 +311,55 @@ Développement d'une application web moderne avec les dernières technologies.
     {
         return providerName.ToLower() switch
         {
-            "grok" => await _grokService.IsAvailableAsync(),
-            "openai" => await _openAIService.IsAvailableAsync(),
-            "mistral" => await _mistralService.IsAvailableAsync(),
+            "gemini" => await IsGeminiAvailableAsync(),
+            "llama" => await IsLlamaAvailableAsync(),
+            "mistral" => await IsMistralAvailableAsync(),
             _ => false
         };
     }
 
+    private Task<bool> IsGeminiAvailableAsync()
+    {
+        try
+        {
+            // Simple test to check if Gemini service is available
+            return Task.FromResult(!string.IsNullOrEmpty(_config.Gemini.ApiKey));
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    private Task<bool> IsLlamaAvailableAsync()
+    {
+        try
+        {
+            // Simple test to check if Llama service is available
+            return Task.FromResult(!string.IsNullOrEmpty(_config.Llama.ApiKey));
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    private Task<bool> IsMistralAvailableAsync()
+    {
+        try
+        {
+            // Simple test to check if Mistral service is available
+            return Task.FromResult(!string.IsNullOrEmpty(_config.Mistral.ApiKey));
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
+    }
+
     public List<string> GetAvailableProviders()
     {
-        return new List<string> { "Grok", "OpenAI", "Mistral" };
+        return new List<string> { "Gemini", "Llama", "Mistral" };
     }
 
     private class ExtractedInfo

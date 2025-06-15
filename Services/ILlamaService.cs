@@ -2,8 +2,7 @@ using SmartMarketplace.Models;
 
 namespace SmartMarketplace.Services;
 
-public interface IOpenAIService
+public interface ILlamaService
 {
     Task<Mission?> GenerateMissionAsync(string prompt);
-    Task<bool> IsAvailableAsync();
 }

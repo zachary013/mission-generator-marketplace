@@ -14,7 +14,7 @@ Content-Type: application/json
 
 {
   "simpleInput": "Backend Node.js Rabat 3500DH remote 6 mois senior",
-  "preferredProvider": "Grok"
+  "preferredProvider": "Gemini"
 }
 
 ### 4. Generate Mission - Frontend React
@@ -87,13 +87,13 @@ Content-Type: application/json
   "simpleInput": ""
 }
 
-### 13. Test with Preferred Provider - OpenAI
+### 13. Test with Preferred Provider - Llama
 POST {{baseUrl}}/api/Mission/generate
 Content-Type: application/json
 
 {
   "simpleInput": "Python Django Fès 2800DH onsite",
-  "preferredProvider": "OpenAI"
+  "preferredProvider": "Llama"
 }
 
 ### 14. Test with Preferred Provider - Mistral

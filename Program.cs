@@ -30,13 +30,13 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.Configure<AIConfig>(builder.Configuration.GetSection("AI"));
 
 // Register HTTP clients for AI services
-builder.Services.AddHttpClient<IGrokService, GrokService>();
-builder.Services.AddHttpClient<IOpenAIService, OpenAIService>();
+builder.Services.AddHttpClient<IGeminiService, GeminiService>();
+builder.Services.AddHttpClient<ILlamaService, LlamaService>();
 builder.Services.AddHttpClient<IMistralService, MistralService>();
 
 // Register services
-builder.Services.AddScoped<IGrokService, GrokService>();
-builder.Services.AddScoped<IOpenAIService, OpenAIService>();
+builder.Services.AddScoped<IGeminiService, GeminiService>();
+builder.Services.AddScoped<ILlamaService, LlamaService>();
 builder.Services.AddScoped<IMistralService, MistralService>();
 builder.Services.AddScoped<IAIService, AIService>();
 

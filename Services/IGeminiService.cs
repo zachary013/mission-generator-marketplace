@@ -2,8 +2,7 @@ using SmartMarketplace.Models;
 
 namespace SmartMarketplace.Services;
 
-public interface IGrokService
+public interface IGeminiService
 {
     Task<Mission?> GenerateMissionAsync(string prompt);
-    Task<bool> IsAvailableAsync();
 }
