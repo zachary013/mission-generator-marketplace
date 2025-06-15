@@ -8,79 +8,104 @@ namespace SmartMarketplace.Services;
 public class AIService : IAIService
 {
     private readonly IGeminiService _geminiService;
-    private readonly ILlamaService _llamaService;
+    private readonly IDeepSeekService _deepSeekService;
     private readonly IMistralService _mistralService;
     private readonly AIConfig _config;
     private readonly ILogger<AIService> _logger;
 
     public AIService(
         IGeminiService geminiService,
-        ILlamaService llamaService,
+        IDeepSeekService deepSeekService,
         IMistralService mistralService,
         IOptions<AIConfig> config,
         ILogger<AIService> logger)
     {
         _geminiService = geminiService;
-        _llamaService = llamaService;
+        _deepSeekService = deepSeekService;
         _mistralService = mistralService;
         _config = config.Value;
         _logger = logger;
     }
 
-    public async Task<Mission?> GenerateMissionAsync(string simpleInput, string? preferredProvider = null)
+    public async Task<MissionGenerationResult> GenerateMissionAsync(string simpleInput, string? preferredProvider = null)
     {
         var prompt = BuildIntelligentPrompt(simpleInput);
+        _logger.LogInformation("Starting mission generation with input: {Input}, preferred provider: {Provider}", 
+            simpleInput, preferredProvider ?? "None");
         
         // Try preferred provider first
         if (!string.IsNullOrEmpty(preferredProvider))
         {
+            _logger.LogInformation("Trying preferred provider: {Provider}", preferredProvider);
             var mission = await TryGenerateWithProvider(preferredProvider, prompt);
             if (mission != null)
             {
                 EnhanceMissionWithIntelligentDefaults(mission, simpleInput);
-                return mission;
+                _logger.LogInformation("Mission generated successfully with preferred provider: {Provider}", preferredProvider);
+                return new MissionGenerationResult { Mission = mission, Provider = preferredProvider };
             }
+            _logger.LogWarning("Preferred provider {Provider} failed, trying default provider", preferredProvider);
         }
 
         // Try default provider
+        _logger.LogInformation("Trying default provider: {Provider}", _config.DefaultProvider);
         var defaultMission = await TryGenerateWithProvider(_config.DefaultProvider, prompt);
         if (defaultMission != null)
         {
             EnhanceMissionWithIntelligentDefaults(defaultMission, simpleInput);
-            return defaultMission;
+            _logger.LogInformation("Mission generated successfully with default provider: {Provider}", _config.DefaultProvider);
+            return new MissionGenerationResult { Mission = defaultMission, Provider = _config.DefaultProvider };
         }
+        _logger.LogWarning("Default provider {Provider} failed, trying fallback providers", _config.DefaultProvider);
 
         // Fallback to other providers
         var providers = GetAvailableProviders().Where(p => p != _config.DefaultProvider && p != preferredProvider);
         foreach (var provider in providers)
         {
+            _logger.LogInformation("Trying fallback provider: {Provider}", provider);
             var fallbackMission = await TryGenerateWithProvider(provider, prompt);
             if (fallbackMission != null)
             {
                 EnhanceMissionWithIntelligentDefaults(fallbackMission, simpleInput);
-                return fallbackMission;
+                _logger.LogInformation("Mission generated successfully with fallback provider: {Provider}", provider);
+                return new MissionGenerationResult { Mission = fallbackMission, Provider = provider };
             }
         }
 
         // Ultimate fallback - generate intelligent mission from input analysis
-        return GenerateIntelligentFallbackMission(simpleInput);
+        _logger.LogWarning("All AI providers failed, using intelligent fallback generation");
+        var intelligentMission = GenerateIntelligentFallbackMission(simpleInput);
+        return new MissionGenerationResult { Mission = intelligentMission, Provider = "Intelligent Fallback" };
     }
 
     private async Task<Mission?> TryGenerateWithProvider(string providerName, string prompt)
     {
         try
         {
-            return providerName.ToLower() switch
+            _logger.LogInformation("Attempting to generate mission with provider: {Provider}", providerName);
+            
+            var mission = providerName.ToLower() switch
             {
                 "gemini" => await _geminiService.GenerateMissionAsync(prompt),
-                "llama" => await _llamaService.GenerateMissionAsync(prompt),
+                "deepseek" => await _deepSeekService.GenerateMissionAsync(prompt),
                 "mistral" => await _mistralService.GenerateMissionAsync(prompt),
                 _ => null
             };
+
+            if (mission != null)
+            {
+                _logger.LogInformation("Successfully generated mission with provider: {Provider}", providerName);
+                return mission;
+            }
+            else
+            {
+                _logger.LogWarning("Provider {Provider} returned null mission", providerName);
+                return null;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error with provider {Provider}", providerName);
+            _logger.LogError(ex, "Error with provider {Provider}: {Message}", providerName, ex.Message);
             return null;
         }
     }
@@ -154,7 +179,8 @@ RÈGLES STRICTES :
         {
             var amount = decimal.Parse(salaryMatch.Groups[1].Value);
             var currency = salaryMatch.Groups[2].Value.ToLower();
-            info.DailyRate = currency.Contains("dh") || currency.Contains("mad") ? amount / 10 : amount;
+            // Conversion DH to EUR: 1 EUR ≈ 11 DH
+            info.DailyRate = currency.Contains("dh") || currency.Contains("mad") ? Math.Round(amount / 11, 0) : amount;
         }
 
         // Extract experience level
@@ -191,6 +217,7 @@ RÈGLES STRICTES :
             ["vue"] = new List<string> { "Vue.js", "JavaScript", "HTML5", "CSS3" },
             ["angular"] = new List<string> { "Angular", "TypeScript", "HTML5", "CSS3" },
             ["node"] = new List<string> { "Node.js", "Express.js", "JavaScript", "MongoDB" },
+            ["laravel"] = new List<string> { "Laravel", "PHP", "MySQL", "Eloquent", "Blade" },
             ["php"] = new List<string> { "PHP", "Laravel", "MySQL", "Symfony" },
             ["python"] = new List<string> { "Python", "Django", "Flask", "PostgreSQL" },
             ["java"] = new List<string> { "Java", "Spring Boot", "Maven", "PostgreSQL" },
@@ -217,6 +244,16 @@ RÈGLES STRICTES :
                 {
                     info.Domain = "Frontend Development";
                     info.Position = "Développeur Frontend";
+                }
+                else if (tech.Key == "laravel" || tech.Key == "php")
+                {
+                    info.Domain = "Backend Development";
+                    info.Position = "Développeur Backend PHP/Laravel";
+                }
+                else if (tech.Key == "node")
+                {
+                    info.Domain = "Backend Development";
+                    info.Position = "Développeur Backend Node.js";
                 }
                 else if (tech.Key == "node" || tech.Key == "php" || tech.Key == "python" || tech.Key == "java")
                 {
@@ -312,7 +349,7 @@ Développement d'une application web moderne avec les dernières technologies.
         return providerName.ToLower() switch
         {
             "gemini" => await IsGeminiAvailableAsync(),
-            "llama" => await IsLlamaAvailableAsync(),
+            "deepseek" => await IsDeepSeekAvailableAsync(),
             "mistral" => await IsMistralAvailableAsync(),
             _ => false
         };
@@ -331,12 +368,12 @@ Développement d'une application web moderne avec les dernières technologies.
         }
     }
 
-    private Task<bool> IsLlamaAvailableAsync()
+    private Task<bool> IsDeepSeekAvailableAsync()
     {
         try
         {
-            // Simple test to check if Llama service is available
-            return Task.FromResult(!string.IsNullOrEmpty(_config.Llama.ApiKey));
+            // Simple test to check if Deep Seek service is available
+            return Task.FromResult(!string.IsNullOrEmpty(_config.DeepSeek.ApiKey));
         }
         catch
         {
@@ -359,7 +396,7 @@ Développement d'une application web moderne avec les dernières technologies.
 
     public List<string> GetAvailableProviders()
     {
-        return new List<string> { "Gemini", "Llama", "Mistral" };
+        return new List<string> { "Gemini", "Mistral", "DeepSeek" };
     }
 
     private class ExtractedInfo
@@ -387,3 +424,5 @@ public static class StringExtensions
         return char.ToUpper(input[0]) + input.Substring(1).ToLower();
     }
 }
+
+

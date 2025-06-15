@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Test Gemini provider
+echo "=== Testing Gemini provider ==="
+curl -k -s -X POST "https://localhost:5001/api/mission/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"simpleInput": "Developpeur Laravel, Rabat, 8000DH", "preferredProvider": "Gemini"}' | jq
+
+# Test DeepSeek provider  
+echo -e "\n=== Testing DeepSeek provider ==="
+curl -k -s -X POST "https://localhost:5001/api/mission/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"simpleInput": "Developpeur Laravel, Rabat, 8000DH", "preferredProvider": "DeepSeek"}' | jq
+
+# Test Mistral provider
+echo -e "\n=== Testing Mistral provider ==="
+curl -k -s -X POST "https://localhost:5001/api/mission/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"simpleInput": "Developpeur Laravel, Rabat, 8000DH", "preferredProvider": "Mistral"}' | jq
+
+# Test Provider AI Status
+echo -e "\n=== Testing AI Provider Status ==="
+curl -k -s -X GET "https://localhost:5001/api/mission/ai-status" | jq

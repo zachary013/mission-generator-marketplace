@@ -2,7 +2,7 @@ using SmartMarketplace.Models;
 
 namespace SmartMarketplace.Services;
 
-public interface ILlamaService
+public interface IDeepSeekService
 {
     Task<Mission?> GenerateMissionAsync(string prompt);
 }

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SmartMarketplace.Models;
 using SmartMarketplace.Services;
 using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.Json;
 
 namespace SmartMarketplace.Controllers;
 
@@ -41,17 +43,17 @@ public class MissionController : ControllerBase
 
             _logger.LogInformation("Generating mission from input: {Input}", request.SimpleInput);
 
-            var mission = await _aiService.GenerateMissionAsync(request.SimpleInput, request.PreferredProvider);
+            var result = await _aiService.GenerateMissionAsync(request.SimpleInput, request.PreferredProvider);
 
-            if (mission == null)
+            if (result.Mission == null)
             {
                 _logger.LogWarning("Failed to generate mission for input: {Input}", request.SimpleInput);
                 return StatusCode(500, ApiResponse<Mission>.ErrorResult("Impossible de générer la mission. Veuillez réessayer."));
             }
 
-            _logger.LogInformation("Successfully generated mission: {Title}", mission.Title);
+            _logger.LogInformation("Successfully generated mission: {Title} with provider: {Provider}", result.Mission.Title, result.Provider);
 
-            return Ok(ApiResponse<Mission>.SuccessResult(mission, "AI Generated"));
+            return Ok(ApiResponse<Mission>.SuccessResult(result.Mission, result.Provider));
         }
         catch (Exception ex)
         {
