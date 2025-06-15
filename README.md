@@ -6,6 +6,9 @@
 
 Cette API ASP.NET Core 8 permet de générer automatiquement des missions freelance détaillées à partir de descriptions simples en utilisant 3 services d'IA différents avec système de fallback intelligent.
 
+<img width="1511" alt="Screenshot 2025-06-15 at 01 27 07" src="https://github.com/user-attachments/assets/ce7cd61b-b464-4611-ad91-7800ea8e5232" />
+
+
 ## 🏗️ Architecture
 
 ```
