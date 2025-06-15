@@ -59,7 +59,13 @@ public class MistralService : IMistralService
                 return null;
             }
 
-            var missionJson = mistralResponse.Choices.First().Message.Content.Trim();
+            var missionJson = mistralResponse.Choices?.FirstOrDefault()?.Message?.Content?.Trim();
+            
+            if (string.IsNullOrEmpty(missionJson))
+            {
+                _logger.LogWarning("Empty response from Mistral API");
+                return null;
+            }
             
             // Clean JSON if it contains markdown formatting
             if (missionJson.StartsWith("```json"))

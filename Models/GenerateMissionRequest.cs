@@ -8,5 +8,5 @@ public class GenerateMissionRequest
     [MinLength(10, ErrorMessage = "SimpleInput must be at least 10 characters")]
     public string SimpleInput { get; set; } = string.Empty;
     
-    public string? PreferredProvider { get; set; } // "Grok", "OpenAI", "Mistral"
+    public string? PreferredProvider { get; set; } // "Gemini", "Llama", "Mistral"
 }
