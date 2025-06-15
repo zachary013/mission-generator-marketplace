@@ -75,6 +75,10 @@ ScaffoldingReadMe.txt
 # Local development settings
 appsettings.Development.json
 appsettings.Local.json
+# Protection des clés API
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
 
 # Logs
 logs/
