@@ -11,31 +11,40 @@ Cette API ASP.NET Core 9 permet de générer automatiquement des missions freela
 
 ## 🏗️ Architecture
 
-```
-SmartMarketplace/
-├── 🎮 Controllers/
-│   └── MissionController.cs          # Endpoints API
-├── 📊 Models/
-│   ├── Mission.cs                    # Modèle principal
-│   ├── ApiResponse.cs                # Réponse standardisée
-│   └── GenerateMissionRequest.cs     # Requête de génération
-├── 🔧 Services/
-│   ├── IAIService.cs                 # Interface service principal
-│   ├── AIService.cs                  # Orchestrateur IA intelligent
-│   ├── IGeminiService.cs             # Interface Gemini
-│   ├── GeminiService.cs              # Service Google Gemini
-│   ├── IDeepSeekService.cs           # Interface DeepSeek
-│   ├── DeepSeekService.cs            # Service DeepSeek
-│   ├── IMistralService.cs            # Interface Mistral
-│   └── MistralService.cs             # Service Mistral
-├── ⚙️ Configuration/
-│   └── AIConfig.cs                   # Configuration IA
-├── Program.cs                        # Configuration app
-├── appsettings.json                  # Paramètres
-└── SmartMarketplace.csproj          # Projet
+```mermaid
+flowchart TB
+    Client[Client Next.js] -->|API Requests| API[SmartMarketplace API]
+    
+    API --> AIService[Service Orchestrateur IA]
+    
+    AIService -->|1. Choix prioritaire| Gemini[Gemini]
+    AIService -->|2. Alternative| DeepSeek[DeepSeek]
+    AIService -->|3. Alternative| Mistral[Mistral]
+    AIService -->|4. Dernier recours| Fallback[Génération Locale]
+    
+    Gemini --> GeminiAPI[API Google]
+    DeepSeek --> DeepSeekAPI[API OpenRouter]
+    Mistral --> MistralAPI[API Mistral]
+    
+    GeminiAPI & DeepSeekAPI & MistralAPI -->|Réponse JSON| AIService
+    Fallback -->|Template| AIService
+    
+    AIService -->|Mission générée| API
+    API -->|Réponse JSON| Client
+    
+    style Client fill:#47b0d1,stroke:#333,stroke-width:2px
+    style API fill:#68ac68,stroke:#333,stroke-width:2px
+    style AIService fill:#68ac68,stroke:#333,stroke-width:2px
+    style Gemini fill:#ffaa5e,stroke:#333,stroke-width:2px
+    style DeepSeek fill:#ffaa5e,stroke:#333,stroke-width:2px
+    style Mistral fill:#ffaa5e,stroke:#333,stroke-width:2px
+    style Fallback fill:#ffaa5e,stroke:#333,stroke-width:2px
+    style GeminiAPI fill:#c792ea,stroke:#333,stroke-width:2px
+    style DeepSeekAPI fill:#c792ea,stroke:#333,stroke-width:2px
+    style MistralAPI fill:#c792ea,stroke:#333,stroke-width:2px
 ```
 
-## 🔗 Endpoints API
+## 📊 Models/
 
 ### 1. **POST** `/api/Mission/generate`
 Génère une mission freelance à partir d'une description simple.
@@ -112,16 +121,13 @@ Vérifie le statut des services IA.
 }
 ```
 
-## 🤖 Intelligence Artificielle
+## 🤖 Providers IA Disponibles
 
-### Système Multi-IA
-
-| Provider | Modèle | Type | Spécialités | API | Points forts |
-|----------|---------|------|-------------|-----|--------------|
-| 🟢 **Google Gemini** *(Défaut)* | `gemini-1.5-flash` | Multimodal | • Génération rapide<br>• Texte structuré<br>• Support français | Google Generative Language | • Équilibre vitesse/qualité<br>• Contextes professionnels<br>• Fiabilité éprouvée |
-| 🧠 **DeepSeek R1** | `deepseek/deepseek-r1:free` | Raisonnement | • Chain-of-Thought<br>• Analyse logique<br>• Missions techniques | OpenRouter (proxy) | • Réflexion étape par étape<br>• Structuration avancée<br>• Détails techniques |
-| 🇫🇷 **Mistral AI** | `mistral-small-2503` | Européen | • Contexte français<br>• Missions locales<br>• Conformité RGPD | Mistral AI API | • Souveraineté numérique<br>• Compréhension culturelle<br>• Standards européens |
-
+| Provider | Modèle | Spécialités | API |
+|----------|---------|-------------|-----|
+| <img src="./public/icons/gimini.svg" width="24" height="24" alt="Gemini"/> **Google Gemini** *(Défaut)* | `gemini-1.5-flash` | • Génération rapide<br>• Texte structuré<br>• Support français | Google Generative Language |
+| <img src="./public/icons/deepseek.svg" width="24" height="24" alt="DeepSeek"/> **DeepSeek R1** | `deepseek/deepseek-r1:free` | • Chain-of-Thought<br>• Analyse logique<br>• Missions techniques | OpenRouter (proxy) |
+| <img src="./public/icons/mistral.svg" width="24" height="24" alt="Mistral"/> **Mistral AI** | `mistral-small-2503` | • Contexte français<br>• Missions locales<br>• Conformité RGPD | Mistral AI API |
 ### Extraction Intelligente
 
 L'API analyse automatiquement l'input utilisateur pour extraire :
