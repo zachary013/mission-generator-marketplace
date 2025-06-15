@@ -396,7 +396,7 @@ Développement d'une application web moderne avec les dernières technologies.
 
     public List<string> GetAvailableProviders()
     {
-        return new List<string> { "Gemini", "Mistral" }; // Temporarily disable Llama
+        return new List<string> { "Gemini", "Mistral", "DeepSeek" };
     }
 
     private class ExtractedInfo
@@ -424,3 +424,5 @@ public static class StringExtensions
         return char.ToUpper(input[0]) + input.Substring(1).ToLower();
     }
 }
+
+
