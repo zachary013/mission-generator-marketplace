@@ -222,7 +222,7 @@ dotnet run
 
 ## 👥 Team
 
-| Avatar                                                                                                  | Name | Role | GitHub |
-|---------------------------------------------------------------------------------------------------------|------|------|--------|
-| <img src="https://github.com/zachary013.png" width="50" height="50" style="border-radius: 50%"/>        | Zakariae Azarkan | WebCam Object Detection | [@zachary013](https://github.com/zachary013) |
-| <img src="https://github.com/Salahjb.png" width="50" height="50" style="border-radius: 50%"/>          | Salaheddine El Jably | Model Training | [@Salahjb](https://github.com/Salahjb) |
+| Avatar                                                                                                  | Name | GitHub |
+|---------------------------------------------------------------------------------------------------------|------|--------|
+| <img src="https://github.com/zachary013.png" width="50" height="50" style="border-radius: 50%"/>        | Zakariae Azarkan | [@zachary013](https://github.com/zachary013) |
+| <img src="https://github.com/Salahjb.png" width="50" height="50" style="border-radius: 50%"/>          | Salaheddine El Jably | [@Salahjb](https://github.com/Salahjb) |
